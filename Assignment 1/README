@@ -1,0 +1,73 @@
+Usurelu Catalin Constantin 333CA
+
+    Am realizat atat implementarea normala cat si optimizata (idem paralel normal, paralel optimizat).
+
+    Varianta normala pur si simplu cauta in toata matricea, pentru fiecare culoare distanta minima,
+conform enuntului.
+    Varianta optimizata, avand o variabila "raza" cauta concentric distantele minime pentru culori.
+La fiecare pas caut in patratul inconjurator de raza r. De asemenea, distanta minima corespunzatoare
+fiecarui element este chiar r. Odata ce am gasit o culoare, stim sigur ca distanta gasita este minima
+si nu o mai cautatm pe viitor. Cand am gasit toate culorile ne oprim si cautam Cmax.
+    Numararea culorilor se face in acelasi paralel for cu restul partii paralelizate.
+    Varianta paralelizata pur si simplu foloseste un paralel for pentru variabila i, adica primul for,
+cel cu care parcurgem liniile.
+
+
+    Rezultate pentru N = 100 si S = 100 (testul in100_20) :
+
+
+            Nr. Threaduri (1 inseamna varianta neparalizata)     Schedule    Chunk   Speedup     Timp rulare
+
+Varianta    1                                                    -           -       -          3m3.75 (183 s) 
+normala
+            2                                                   dynamic     10       1.87       1m37.810 (97 s)  
+    
+            2                                                   dynamic     30       1.57       1m56.793 (116 s)
+    
+            2                                                   static      10       1.91       1m37.086 (97 s)
+
+            2                                                   static      30       1.596      1m55.100 (115 s)
+
+
+            4                                                   dynamic     10       3.05       1m0.139 (60 s)  
+    
+            4                                                   dynamic     30       2.95       1m2.156s (62 s)
+    
+            4                                                   static      10       3.02       1m0.847s (60 s)
+
+            4                                                   static      30       2.99       1m1.354s (61 s)
+
+
+Varianta    1                                                   -           -       -           0m19.465s (19 s)          
+optimizata
+            2                                                   dynamic     10      1.80        0m10.763s (10 s)
+
+            2                                                   dynamic     30      1.62        0m11.998s (12 s)
+
+            2                                                   static      10      1.79        0m10.842s (10 s)
+
+            2                                                   static      30      1.48        0m13.113s (13 s)
+
+            4                                                   dynamic     10      2.85        0m6.818s (6 s)
+
+            4                                                   dynamic     30      2.44         0m7.953s (8 s)
+
+            4                                                   static      10      2.75         0m7.074s (7 s)
+
+            4                                                   static      30      2.25         0m8.624s (8 s)
+
+Observam ca chunk size-ul de 10 (mai mic) este mai bun. Este logic, deoarece, daca ar fi prea mare, un thread ramane
+cu mai putina munca, iar celelalta cu mai multa.
+De asemenea, scheduling dinamic este mai bun, deoarece pentru un anumit element al matricii s-ar putea sa gasim 
+toate culorile mai repede (varianta optimizata), deci unele thread-uri ar rula mai repede, altele mai greu.
+
+Configuratia sistemului pe care am rulat:
+
+OS: Ubuntu 13.04 64-bit
+CPU: Intel Core i7-2630QM @ 2.00GHz, 64 bits
+4 core-uri; 2 thread-uri/core (multi-threading)
+L1 cache: 64KiB
+L2 cache: 256KiB
+L3 cache: 6MiB
+RAM: 6 GB (1333 MHz)
+Versiune compilator: gcc 4.7.3

@@ -1,0 +1,142 @@
+Responsabili tema: Gabriel Gu?u, Drago? Comaneci
+
+Data publicarii: 06.11.2013
+
+Termenul de predare: 23.11.2013
+
+Update 12.11.2013, ora 1:30 AM: eliminare limitare la "cele mai frecvente cuvinte"
+
+Update 12.11.2013, ora 9:00 PM: adaugare recomandare privitoare la ?irul de delimitatori
+
+Update 16.11.2013, ora 10:50 PM:
+
+modificare numar zecimale pentru trunchiere la 3 in loc de 2
+eliminare recomandare privind sirul de tokenizare; folositi orice tokeni considerati a fi "natural" eliminati
+Tip 17.11.2013, ora 07:05 PM: valorile numerice din output nu reprezinta un sistem de referin?a pentru notarea temei; ele sunt aproximative, diferind de ?irul de delimitatori folosit ?i de modul în care se face prelucrarea cuvintelor "de margine". Va sugeram, totu?i, sa returna?i ni?te valori corecte relativ la implementarea voastra.
+
+
+1. Introducere. Cerintele temei
+Pentru a facilita obtinerea rapida si precisa a informatiilor existente in paginile Web, motoarele de cautare indexeaza (colecteaza, parseaza si stocheaza) datele în avans, pentru a facilita procesele de cautare. Procesul se numeste Web indexing atunci cand se refera la indexarea paginilor existente în Internet.
+
+Cautarea unui cuvânt se poate face fie într-un document (sau o mul?ime de documente) neindexat (dar, în general, într-un timp de execu?ie mult mai lung), ori într-un document (ori mul?ime de documente) într-un timp mai rapid. Indexarea unui document se poate face în timp ce se executa o cautare în el pentru prima data, ori se pot indexa în prealabil toate documentele. Pentru optimizarea timpului de cautare, motoarele de cautare cele mai populare fac indexarea totala a textului existent online (practic, indexarea ?i cautarea sunt pa?i complet separa?i).
+
+Cerintele temei
+În aceasta tema se cere scrierea unui program paralel in Java care sa realizeze indexarea unui set de documente primit ca input ?i apoi sa verifice daca un anumit document este plagiat, prin compararea similarita?ii semantice a documentului curent vs. o serie de documente indexate.
+
+În urma procesului de indexare se determina numarul de apari?ii al fiecarui cuvânt existent într-un document, ob?inându-se o lista de perechi (cuvânt, numar de aparitii). Programul trebuie sa permita calcularea similarita?ii semantice (sub forma de procent) între documentul primit ca parametru ?i toate documente indexate ?i sa afi?eze documentele cu grad maxim de similaritate.
+
+Pentru paralelizarea indexarii sa va folosi paradigma Replicated Workers (vezi Laborator 5) ?i modelul MapReduce. Fiecare document se va fragmenta în parti de dimensiune fixa ce vor fi procesate în paralel (opera?iunea de Map), pentru fiecare parte rezultând câte un vector par?ial ce con?ine termenii ?i numarul de apari?ii ale acestora. Pasul urmator îl reprezinta combinarea vectorilor (opera?iunea de Reduce) în urma caruia se ob?ine un vector ce caracterizeaza întregul document. Pentru fiecare document se vor calcula frecven?ele de apari?ie ale cuvintelor dintr-un document, care vor reprezenta indexul documentului. Pentru ca un cuvânt din documentul verificat împotriva plagiatului sa fie considerat relevant într-un calcul de similaritate, cuvântul respectiv trebuie sa se afle în vectorul care con?ine termenii cu frecven?ele cele mai mari de apari?ie al documetului comparat.
+
+2. Implementare
+2.1 Paradigma Map-Reduce - Prezentare generala
+Pentru rezolvarea acestei probleme se va folosi un model Replicated Workers, asemanator cu modelul MapReduce folosit de inginerii de la Google pentru procesarea unor seturi mari de documente în sisteme paralele ?i distribuite. Acest articol prezinta modelul MapReduce folosit de Google ?i o parte dintre aplica?iile lui (mai importante pentru în?elegerea modelului sunt primele 4 pagini).
+
+MapReduce este un model de programare paralela (?i implementarea asociata) pentru procesarea unor seturi imense de date folosind sute sau mii de procesoare. Modelul permite paralelizarea ?i distribu?ia automata a taskurilor. Paradigma MapReduce se bazeaza pe existen?a a doua func?ii care îi dau ?i numele: map ?i reduce. Func?ia map prime?te ca input o functie f ?i o lista de elemente ?i returneaza o noua lista de elemente, rezultata în urma aplicarii func?iei f fiecarui element din lista ini?iala. Func?ia reduce combina rezultatele obtinu?e anterior.
+
+Mecanismul MapReduce func?ioneaza în modul urmator:
+
+utilizatorul cere procesarea unui set de documente; aceasta cerere este adresata unui proces (fir de execu?ie) master;
+
+master-ul împarte documentele în fragmente de dimensiuni fixe, care vor fi asignate unor procese (fire de execu?ie) worker; un worker va executa pentru un fragment de fisier o opera?ie numita “map”, care va genera ni?te rezultate par?iale având forma unor perechi de tip (cheie, valoare);
+
+Dupa ce opera?iile “map” au fost executate, master-ul asigneaza worker-ilor task-uri de tip “reduce”, prin care se combina rezultatele par?iale.
+
+2.2 Cerin?e pentru problema propusa
+Dându-se un set de ND documente ?i un document DOC de verificat împotriva plagiatului (prin calcularea gradului de similaitate cu celelalte documente), sa se determine documentele cu gradul de similaritate mai mare decât un prag X.
+
+Gradul de similariate între doua documente se va calcula cu ajutorul formulei din acest articol:
+
+sim(di, dj) = sum(f(t,di) * f(t,dj)) [%], unde t apar?ine lui V,
+
+în care:
+
+di ?i dj sunt documentele ale caror grad de similaritate se dore?te calculat
+
+f(t, di) reprezinta frecven?a de apari?ie a termenului t în documentul di
+
+V reprezinta vocabularul de termeni (se poate considera ca reuniunea termenilor din ele doua documente)
+
+Frecven?a de apari?ie a unui termen într-un document se calculeaza cu formula:
+
+                f(t, d) = (nr_apari?ii_cuvânt(t, d) / nr_total_cuvinte(d)) * 100 [%],
+
+în care:
+
+nr_apari?ii_cuvânt(t, d) este numarul de apari?ii ale termenului t în documentul d
+
+nr_total_cuvinte(d) este numarul total de cuvinte din documentul d (în cazul problemei de fa?a se poate considera ca fiind numarul de cuvinte cu cele mai mari frecven?e)
+
+Pentru cerin?a descrisa mai sus se considera:
+
+[MAP]:  Împar?irea fi?ierelor se va face în fragmente de câte D octe?i (cu excep?ia ultimului fragment, care poate fi mai scurt)
+
+Observa?ie: Poate aparea problema ca fragmentul prelucrat de un worker sa se termine sau sa înceapa în mijlocul unui cuvânt. Se va adopta urmatoarea conven?ie: daca fragmentul începe în mijlocul unui cuvânt, worker-ul va "sari peste" acel cuvânt; daca fragmentul se termina în mijlocul unui cuvânt, worker-ul va prelucra ?i acel cuvant. În acest mod, cuvintele care sunt "la grani?a" dintre doua fragmente vor fi prelucrate tot timpul de worker-ul ce se ocupa de fragmentul care se afla în fi?ier înaintea cuvântului respectiv.
+
+Astfel un task de tip “map”:
+
+prime?te ca input: numele fi?ierului, pozi?ia de unde începe sa citeasca din fi?ier, ?i pozitia de sfâr?it;
+
+întoarce ca output: perechi de tip (cheie, valoare), în cazul problemei de fa?a: (nume_document, vector_par?ial). Vectorul par?ial con?ine setul de cuvinte împreuna cu numarul de apari?ii ale acestora.
+
+[REDUCE]: Se calculeaza similaritatea semantica între documentul primit ca parametru ?i toate documentele indexate.
+
+2.3 Observa?ii generale
+rezultatele opera?iilor "map" vor fi ?inute în memorie; în mod normal ele s-ar fi scris si pe disc;
+
+ca mod de execu?ie, se pot folosi (de?i nu este obligatoriu) obiecte de tip "thread pool" care sunt deja implementate în Java (vezi interfa?a ExecutorService); astfel, un thread worker poate prelucra mai multe task-uri;
+
+pentru simplificare se pot utiliza mai multe thread pool-uri – de ex. unul pentru opera?iile de tip "map", ?i unul pentru opera?iile de tip "reduce";
+
+cuvintele pot fi de orice dimensiune si con?in doar litere;
+
+pentru tokenizare se recomanda folosirea ?irului de delimitatori " \t\n\r\f"
+compararea între cuvinte nu va fi case sensitive (ve?i transforma toate cuvintele în cuvinte cu litere mici înainte de a le prelucra);
+
+frecven?ele se vor considera cu 3 zecimale, ob?inute prin trunchiere (nu prin rotunjire).
+
+3. Formatul datelor de intrare/iesire.
+Programul va primi ca argumente în linia de comanda: NT (numarul de thread-uri worker), numele unui fi?ier de intrare ?i numele unui fi?ier de ie?ire (în aceasta ordine).
+
+Observa?ie: Se vor porni NT thread-uri de tip Map, respectiv NT thread-uri de tip Reduce.
+
+Fi?ierul ce con?ine datele de intrare are urmatorul format:
+
+pe linia I: numele documentului DOC pentru care se dore?te determinarea gradului de plagiere
+
+pe linia II: dimensiunea D (în octe?i) a fragmentelor în care se vor impar?i fi?ierele
+
+pe linia III: numarul X reprezentând “pragul de similaritate” (ex.: vreau sa mi se returneze documentele cu gradul de similaritate mai mare de X fa?a de documentul D)
+
+pe linia IV: numarul ND de documente de tip text de indexat ?i în care se va face cautarea
+
+pe urmatoarele ND linii: numele celor ND documente (câte unul pe linie)
+
+Observatie: Toate fisierele de intrare vor contine doar caractere ASCII.
+
+În fi?ierul de ie?ire, pentru documentul verificat se vor afi?a numele documentelor cu gradul de similaritate mai mare ca X - fiecare nume pe câte un rand, în ordine descrescatoare a gradului de similaritate - împreuna cu gradul de similaritate.
+
+Formatul fisierului de iesire este urmatorul:
+
+Rezultate pentru: nume_document_D
+
+DOCUMENT_1 (sim(D, DOCUMENT_1))
+
+…
+
+DOCUMENT_P (sim(D, DOCUMENT_P)),
+
+unde sim(D,DOCUMENT_i) > X, i = [1, … P]
+
+4. Teste.
+Pentru a verifica functionalitatea temei puteti folosi aceste teste.
+
+5. Resurse (optional)
+The Anatomy of a Large-Scale Hypertextual Web Search Engine
+
+Alt articol introductiv despre MapReduce
+
+MapReduce on Wikipedia
+
+Algoritm pentru compararea textelor:
+
+http://www.umiacs.umd.edu/~jimmylin/publications/Elsayed_etal_ACL2008_short.pdf

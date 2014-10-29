@@ -1,0 +1,48 @@
+// Usurelu Catalin Constantin
+// 333CA
+
+
+In principiu enuntul este destul de clar si nu am nimic nou
+de adaugat ca metoda de implementare. De asemenea am comentat
+bine codul si se intelege ce am facut.
+
+Voi face doar niste precizari si remarci asupra unor probleme
+pe care le am avut.
+
+In primul rand, pentru a implementa mai frumos cerinta, mi-am
+facut o clasa Complex pentru operatii cu numere complexe.
+Astfel functiile Mandelbrot si Julia arata corect, matematic
+(adica nu am z.x = z.x * z.x + c.x).
+
+Pentru lizibilitatea codului, am definit variabilele principale
+globale. Pentru proiecte de mici dimensiuni, algoritmice,
+acest mod creste lizibilitatea codului si previne erori rezultate
+din neatentie. Era mult prea urat codul pe care il scrisasem initial
+cu variabile globale si as vrea ca daca ma uit vreodata din nou peste
+el sa si inteleg ce am scris.
+
+Apoi, modul in care fiecare process isi calculeaza intervalul
+pe care lucreaza ete urmatorul: alocam pentru fiecare proces
+un grup de linii consecutive pe care lucreaza. Ultimul proces
+poate avea mai multe linii - din cauza erorilor de precizie
+la impartirea height / numtasks, deci el proceseaza liniile
+ramase.
+
+De asemenea, pentru rotunjire, in c++ conversia de la double la
+int este echivalenta cu aplicare functiei floor(), deci nu a
+trebuie sa apelez separata floor().
+
+Ca problema principala pe care am avut-o: atunci cand calulez
+functiile Julia/Mandelbrot, eu calculez pentru un grup de linii,
+adica fiecare process lucreaza pe niste linii consecutive.
+Pentru a calcula locatia [i][j] din matricea corespunzatoare,
+am un i respectiv j si la fiecare pas ii incrementez cores-
+punzator. Eu initial am incercat sa scot direct i si j, cunoscand
+punctul din spatiul complex pentru care am calculat, spre exemplu
+i = (c.y - y_min) / rezolutie (arata cam ca formula pentru height).
+Problema este ca in C++ compararea numerelor de tip double nu se
+face prea corect, si pentru ceva de genul 2.4 < 2.4 imi dadea true.
+Asa ca am calculat in paralele i si j care se incrementau in acelasi
+timp cu c.y respetiv c.x (sau z.y si z.x).
+
+

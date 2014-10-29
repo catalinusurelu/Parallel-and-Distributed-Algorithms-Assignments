@@ -1,0 +1,67 @@
+// Usurelu Catalin Constantin
+// 333CA
+
+    Observatie: Pentru fisierele de intrare in arhiva, topologia contine 14 noduri (trebuie testat cu -np 14)
+                Fisierele de test sunt numite: topologie si mesaje.
+
+    Faza 1
+
+    Am implementat algoritmul de descoperire al topologiei prezentat la laborator. Topologia este reprezentata
+prin matrice de adiacenta. Mesajele de sondaj si ecou au drept continut aceasta topologie, dar, careia ii adaugam
+un tag (tinand cont ca trimitem pe un canal comun - ca la laborator - sondaj_ecou, trebuie sa diferentiem cumva
+tipul de mesaje). Pentru aceasta matricea are dimensiunea cu 1 mai mare (width + 1, height + 1), iar in locatia
+din coltul din dreapta jos ii punem tagul (e mai simplu asa).
+
+    Pe langa parinti, memoram si copiii. Pentru ca tratam cicluri, primim si ecouri de la procese care nu sunt
+copii (topologii nule). Vom considera copii, doar procesele care trimit topologii nenule (ni se garanteaza ca
+graful este conex, deci algoritmul este valid deoarece orice proces are topologia pe care o trimite nenula).
+
+    Pentru a trimit topologia mi-am creat functii (MPI_Recv_Topology si MPI_Send_Topology) care transforma aceste
+matricii intr-un vector (liniarizam matricea) si o trimite/primeste. Altfel, daca am fi trimis linie cu linie,
+s-ar fi intercalat mesajele.
+
+    Tabela de rutare pentru fiecare nod o calculez folosind un algoritm de dirijare - calea cea mai scurta - si
+anume BFS (e echivalent cu algoritmul lui Dijkstra prezentat la Protocoale de comunicatii, pentru ca avem
+muchii ale caror cost este 1).
+
+    Tabela de rutare o afisez in formatul destinatie next_hop
+
+    Faza 2
+
+    Initial fiecare nod trimite un mesaj de broadcast tuturor celorlalte noduri. Pentru fiecare mesaje de broadcast
+primit marcam intr-un vector sursa broadcastului si il trimitem la vecini. Cand am acumulat in vector sursele tuturor
+proceselor, inseamna ca toate procesele sunt gata de faza 2.
+
+    Apoi incep sa citesc din fisier si sa trimit mesajele. Daca am mesaj de broadcast din nou, mi-am facut un hash map
+care imi spune daca a mai fost primit odata (verific daca am mai primit continutul lui odata; in loc sa ne complicam
+sa punem sequence numers packetelor ca la PC, doar avem grija sa nu mai fi trimis acelasi broadcast vreodata; altfel,
+cazul acesta genereaza foarte multe probleme si nu exista solutie simpla, deci nu cred ca trebuia sa ne complicam foarte
+mult la tema cu acest lucru). Acest lucru imi permite sa nu trimit la nesfarsit broadcastul in caz ca avem bucle.
+De asemenea, daca mesajul de broadcast contine mesajul Finished_phase_2, procedez ca la trimiterea broadcastului initial,
+pentru a imi da seama daca am terminat faza 2.
+
+    Afisarea mesajelor este mai problematica deoarece mesajele se intercaleaza, dar macar in felul acesta vedem mesajele
+in ordinea (temporala) in care ar fi trimise intr-o retea reala.
+
+    Faza 3
+
+    Am implementat exact algoritmul prezentat la curs pentru determinarea liderului pe un arbore (stim pentru fiecare proces
+tatal si fii, i-am gasit la faza 1).
+
+    Algoritmul de la curs gaseste mereu procesul cu id minim si il pune lider. Pentru ca aici id-urile sunt de genul 0,1,2,3..
+vom obtine mereu rezultatele: lider = 0; lider_adjunct = 1; Daca ar fi sa generam id-uri random pentru fiecare process, am
+obtine rezultate diferite, dar acest lucru nu influenteaza cu nimic algoritmul in sine si nici nu se specifica in tema tratarea
+acestui caz.
+
+    Pentru a putea folosi algoritmul si pentru adjunct, ii dau ca parametru un nod pe care sa il ignore (in cazul liderului -1,
+adica nu ignora pe nimeni, iar in cazul adjunctului ii dam id-ul liderului pentru a ignora liderul) asfel incat sa nu mai luam
+in considerare liderul, spre exemplu. Daca parametrul este echivalent cu nodul curent, ii dam nodului curent valoarea infinit
+(max_int) adica nu va influenta calculul minimului (e ca si cum nu ar exista).
+
+    Observatie: pentru a afisa mesajele frumos (adica sa nu se intercaleze bucati de mesaje), folosesc un stringstream in care
+bag tot mesajul si apoi ii afisez continutul (cout << A << B << ...., reprezinta mai multe apeluri, deci se pot intretzese cu
+outputul altor procese; cu cout << stringstream.str() nu sunt probleme). De asemenea folosesc un MPI_BARRIER ca sa afisez corect
+in ordinea id-urilor mesajele. Aceste lucru nu influenteaza rezolvarea corecta a temei deoarece oricum la sfarsitul primei faze
+ne sincrionizam cu mesaje de broadcast si la sfarsit (afisarea liderilor) nici nu mai conteaza, deoarece nu mai urmeaza nimic.
+Fara MPI_BARRIER tema functioneaza la fel(poate fi eliminat daca e cazul si se va observa ca functioneaza la fel doar ca sunt afisate
+urat mesajele). Chiar daca nu l-as fi folosit, tot se putea implementa un algoritm de bariera distribuita si obtineam acelasi efect.
